@@ -304,6 +304,12 @@ async function compressOne(entry) {
 
   let w = img.naturalWidth, h = img.naturalHeight;
 
+  // 最长边超过 6000 像素时自动等比缩放
+  if (Math.max(w, h) > 6000) {
+    if (w >= h) { h = Math.round(h * 6000 / w); w = 6000; }
+    else        { w = Math.round(w * 6000 / h); h = 6000; }
+  }
+
   const canvas = document.createElement('canvas');
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d');
