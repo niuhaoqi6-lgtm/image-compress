@@ -298,7 +298,6 @@ async function compressAll() {
 
 async function compressOne(entry) {
   const quality  = parseInt($('quality').value) / 100;
-  const maxEdge  = parseInt($('maxEdge').value)  || 0;
   const maxMB    = parseFloat($('maxFileMB').value) || 0;
   const maxKB    = maxMB > 0 ? maxMB * 1024 : 0;
   const outFmt   = $('outFormat').value;
@@ -306,12 +305,6 @@ async function compressOne(entry) {
   const img = await loadImage(entry.thumb || URL.createObjectURL(entry.file));
 
   let w = img.naturalWidth, h = img.naturalHeight;
-
-  // Scale down by maxEdge
-  if (maxEdge > 0 && Math.max(w, h) > maxEdge) {
-    if (w >= h) { h = Math.round(h * maxEdge / w); w = maxEdge; }
-    else        { w = Math.round(w * maxEdge / h); h = maxEdge; }
-  }
 
   const canvas = document.createElement('canvas');
   canvas.width = w; canvas.height = h;
