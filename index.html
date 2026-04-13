@@ -336,15 +336,21 @@ async function compressOne(entry) {
   let blob;
 
   // Binary search to hit maxKB target
-  if (maxKB > 0 && mime !== 'image/png') {
+  if (maxKB > 0) {
+    // PNG 不支持质量调节，自动转为 JPG 来满足大小限制
+    let targetMime = mime === 'image/png' ? 'image/jpeg' : mime;
     let lo = 0.1, hi = quality, best = null;
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 10; i++) {
       const mid = (lo + hi) / 2;
-      const b = await canvasToBlob(canvas, mime, mid);
+      const b = await canvasToBlob(canvas, targetMime, mid);
       if (b.size <= maxKB * 1024) { best = b; lo = mid; }
       else { hi = mid; }
     }
-    blob = best || await canvasToBlob(canvas, mime, 0.1);
+    blob = best || await canvasToBlob(canvas, targetMime, 0.1);
+    // 如果原格式是 PNG 且被转换了，更新 mime 记录
+    if (mime === 'image/png' && blob.type !== 'image/png') {
+      // blob 已是 jpeg，保持不变
+    }
   } else {
     blob = await canvasToBlob(canvas, mime, q);
   }
