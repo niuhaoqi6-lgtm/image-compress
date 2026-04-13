@@ -263,7 +263,8 @@ function loadThumb(entry) {
 
 // ─── Compress ────────────────────────────────────────────
 async function compressAll() {
-  const toProcess = files.filter(f => f.status === 'ready' || f.status === 'error');
+  // 每次点击都重新压缩所有文件，不管之前是否压缩过
+  const toProcess = files.filter(f => f.status !== 'processing');
   if (!toProcess.length) { showNotif('没有需要压缩的文件', 'error'); return; }
 
   $('btnCompress').disabled = true;
