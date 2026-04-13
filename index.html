@@ -94,6 +94,7 @@ select:focus{border-color:#60a5fa}
 .tag-saved{background:#2a1a3a;color:#a78bfa;font-weight:700}
 .tag-error{background:#3a1a1a;color:#f87171}
 .tag-processing{background:#2a2a1a;color:#fbbf24}
+.tag-warning{background:#3a2a1a;color:#fbbf24}
 
 .file-action{display:flex;gap:6px;align-items:center;flex-shrink:0}
 .btn-sm{width:32px;height:32px;border:1px solid #2d3550;background:#2d3550;border-radius:8px;
@@ -119,6 +120,7 @@ select:focus{border-color:#60a5fa}
 .notif.show{transform:translateX(0)}
 .notif.success{border-color:#1d4d3a;color:#34d399}
 .notif.error{border-color:#4d1d1d;color:#f87171}
+.notif.warning{border-color:#3a2a1a;color:#fbbf24}
 
 @media(max-width:600px){
   .stats-bar{grid-template-columns:repeat(2,1fr)}
@@ -134,7 +136,7 @@ select:focus{border-color:#60a5fa}
   <!-- Header -->
   <div class="header">
     <h1>🖼️ 图片压缩工具</h1>
-    <p>保持画质，智能压缩 · 支持 JPG / PNG / WebP / GIF · 完全本地处理，不上传任何数据</p>
+    <p>保持画质，智能压缩 · 支持 JPG / PNG / WebP · 完全本地处理，不上传任何数据</p>
   </div>
 
   <!-- Settings -->
@@ -164,7 +166,7 @@ select:focus{border-color:#60a5fa}
   <div class="drop-zone" id="dropZone">
     <span class="icon">📂</span>
     <h3>拖拽图片到这里 或 点击选择</h3>
-    <p>支持 JPG / PNG / WebP / GIF / BMP · 可同时选择多张</p>
+    <p>支持 JPG / PNG / WebP / BMP · 可同时选择多张</p>
     <input type="file" id="fileInput" accept="image/*" multiple/>
   </div>
 
@@ -213,8 +215,9 @@ select:focus{border-color:#60a5fa}
 
 <script>
 // ─── State ───────────────────────────────────────────────
-const files = []; // {id, file, thumb, origSize, origW, origH, blob, newSize, newW, newH, status}
+const files = []; // {id, file, thumb, origSize, origW, origH, blob, newSize, newW, newH, status, errorMsg, isGif}
 let idCnt = 0;
+const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB 文件大小上限保护
 
 // ─── DOM Helpers ─────────────────────────────────────────
 const $  = id => document.getElementById(id);
@@ -237,17 +240,29 @@ dropZone.addEventListener('drop', e => {
 });
 
 function addFiles(fileList) {
-  let added = 0;
+  let added = 0, skippedLarge = 0, skippedGif = 0;
   for (const f of fileList) {
     if (!f.type.startsWith('image/')) continue;
+
+    // BUG-2: 超大文件保护 (>200MB)
+    if (f.size > MAX_FILE_SIZE) {
+      skippedLarge++;
+      continue;
+    }
+
     const id = ++idCnt;
+    const isGif = f.type === 'image/gif';
+    if (isGif) skippedGif++;
+
     const entry = { id, file: f, thumb: null, origSize: f.size,
-                    origW: 0, origH: 0, blob: null, newSize: 0, newW: 0, newH: 0, status: 'ready' };
+                    origW: 0, origH: 0, blob: null, newSize: 0, newW: 0, newH: 0,
+                    status: 'ready', errorMsg: '', isGif: isGif };
     files.push(entry);
     loadThumb(entry);
     added++;
   }
   if (added) { renderList(); updateBtns(); }
+  if (skippedLarge) showNotif(`⚠️ ${skippedLarge} 个文件超过 200MB，已跳过（防止浏览器崩溃）`, 'warning');
 }
 
 function loadThumb(entry) {
@@ -260,38 +275,60 @@ function loadThumb(entry) {
       entry.thumb = e.target.result;
       renderItem(entry);
     };
+    img.onerror = () => {
+      entry.status = 'error';
+      entry.errorMsg = '图片加载失败';
+      renderItem(entry);
+    };
     img.src = e.target.result;
+  };
+  reader.onerror = () => {
+    entry.status = 'error';
+    entry.errorMsg = '文件读取失败';
+    renderItem(entry);
   };
   reader.readAsDataURL(entry.file);
 }
 
 // ─── Compress ────────────────────────────────────────────
 async function compressAll() {
-  // 每次点击都重新压缩所有文件，不管之前是否压缩过
+  // BUG-4: 重新压缩前先重置统计数据
   const toProcess = files.filter(f => f.status !== 'processing');
   if (!toProcess.length) { showNotif('没有需要压缩的文件', 'error'); return; }
 
+  // 重置所有 blob，让统计不残留旧数据
+  toProcess.forEach(f => { f.blob = null; f.newSize = 0; });
+  updateStats();
+
   $('btnCompress').disabled = true;
   $('btnCompress').textContent = '⏳ 压缩中...';
+  $('statsBar').style.display = 'grid';
 
+  let successCount = 0, failCount = 0;
   for (const entry of toProcess) {
     entry.status = 'processing';
+    entry.errorMsg = '';
     renderItem(entry);
     try {
       await compressOne(entry);
       entry.status = 'done';
+      successCount++;
     } catch(e) {
       entry.status = 'error';
-      entry.errorMsg = e.message;
+      entry.errorMsg = e.message || '未知错误';
+      failCount++;
     }
     renderItem(entry);
+    updateStats(); // 实时更新统计
   }
 
   $('btnCompress').disabled = false;
   $('btnCompress').innerHTML = '⚡ 一键压缩全部';
-  $('btnDownload').disabled = false;
-  updateStats();
-  showNotif(`✅ 压缩完成！共处理 ${toProcess.length} 张`, 'success');
+  if (successCount > 0) $('btnDownload').disabled = false;
+
+  let msg = `✅ 完成 ${successCount} 张`;
+  if (failCount > 0) msg += `，${failCount} 张失败`;
+  showNotif(msg, failCount > 0 ? 'warning' : 'success');
 }
 
 async function compressOne(entry) {
@@ -325,11 +362,13 @@ async function compressOne(entry) {
 
   let q = quality;
   let blob;
+  let converted = false; // 是否发生了格式转换
 
-  // Binary search to hit maxKB target
-  if (maxKB > 0) {
-    // PNG 不支持质量调节，自动转为 JPG 来满足大小限制
-    let targetMime = mime === 'image/png' ? 'image/jpeg' : mime;
+  // BUG-5: PNG + 大小限制 → 提示用户并转为 WebP（比 JPG 更好）
+  if (maxKB > 0 && mime === 'image/png') {
+    // PNG 无法有损压缩，自动转 WebP
+    let targetMime = 'image/webp';
+    converted = true;
     let lo = 0.1, hi = quality, best = null;
     for (let i = 0; i < 10; i++) {
       const mid = (lo + hi) / 2;
@@ -338,10 +377,16 @@ async function compressOne(entry) {
       else { hi = mid; }
     }
     blob = best || await canvasToBlob(canvas, targetMime, 0.1);
-    // 如果原格式是 PNG 且被转换了，更新 mime 记录
-    if (mime === 'image/png' && blob.type !== 'image/png') {
-      // blob 已是 jpeg，保持不变
+  } else if (maxKB > 0) {
+    // JPG/WebP + 大小限制：二分搜索
+    let lo = 0.1, hi = quality, best = null;
+    for (let i = 0; i < 10; i++) {
+      const mid = (lo + hi) / 2;
+      const b = await canvasToBlob(canvas, mime, mid);
+      if (b.size <= maxKB * 1024) { best = b; lo = mid; }
+      else { hi = mid; }
     }
+    blob = best || await canvasToBlob(canvas, mime, 0.1);
   } else {
     blob = await canvasToBlob(canvas, mime, q);
   }
@@ -350,6 +395,7 @@ async function compressOne(entry) {
   entry.newSize = blob.size;
   entry.newW   = w;
   entry.newH   = h;
+  entry.converted = converted;
 }
 
 function canvasToBlob(canvas, mime, quality) {
@@ -366,14 +412,21 @@ function loadImage(src) {
 }
 
 // ─── Download ────────────────────────────────────────────
-function downloadOne(entry) {
-  if (!entry.blob) return;
+// BUG-1: 文件名去重，防止 _compressed_compressed...
+function getOutputName(entry) {
   const ext = entry.blob.type === 'image/png'  ? 'png'  :
               entry.blob.type === 'image/webp' ? 'webp' : 'jpg';
-  const base = entry.file.name.replace(/\.[^.]+$/, '');
+  let base = entry.file.name.replace(/\.[^.]+$/, '');
+  // 去掉已有的 _compressed 后缀
+  base = base.replace(/_compressed$/, '');
+  return `${base}_compressed.${ext}`;
+}
+
+function downloadOne(entry) {
+  if (!entry.blob) return;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(entry.blob);
-  a.download = `${base}_compressed.${ext}`;
+  a.download = getOutputName(entry);
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 3000);
 }
@@ -387,10 +440,7 @@ async function downloadAll() {
   if (typeof JSZip !== 'undefined') {
     const zip = new JSZip();
     done.forEach(e => {
-      const ext = e.blob.type === 'image/png'  ? 'png'  :
-                  e.blob.type === 'image/webp' ? 'webp' : 'jpg';
-      const base = e.file.name.replace(/\.[^.]+$/, '');
-      zip.file(`${base}_compressed.${ext}`, e.blob);
+      zip.file(getOutputName(e), e.blob);
     });
     const content = await zip.generateAsync({ type: 'blob' });
     const a = document.createElement('a');
@@ -447,17 +497,31 @@ function itemHTML(e) {
   let metaTags = `<span class="meta-tag tag-size">原 ${origStr}</span>
                   <span class="meta-tag tag-dim">${dimStr}</span>`;
 
+  // BUG-3: GIF 标记提示
+  if (e.isGif) {
+    metaTags += `<span class="meta-tag tag-warning">GIF 仅第一帧</span>`;
+  }
+
   if (e.status === 'done' && e.blob) {
     const saved = Math.round((1 - e.newSize / e.origSize) * 100);
     const newStr = fmtSize(e.newSize);
     const newDim = `${e.newW}×${e.newH}`;
+    let formatNote = '';
+    // BUG-5: 显示格式转换提示
+    if (e.converted) {
+      const origExt = e.file.type === 'image/png' ? 'PNG' : e.file.type.split('/')[1].toUpperCase();
+      const newExt = e.blob.type === 'image/webp' ? 'WebP' : e.blob.type.split('/')[1].toUpperCase();
+      formatNote = `<span class="meta-tag tag-warning">${origExt}→${newExt}</span>`;
+    }
     metaTags += `<span class="meta-tag tag-new-size">压后 ${newStr}</span>
                  <span class="meta-tag tag-dim">${newDim}</span>
+                 ${formatNote}
                  <span class="meta-tag tag-saved">↓${saved}%</span>`;
   } else if (e.status === 'processing') {
     metaTags += `<span class="meta-tag tag-processing">⏳ 压缩中...</span>`;
   } else if (e.status === 'error') {
-    metaTags += `<span class="meta-tag tag-error">❌ 失败</span>`;
+    // BUG-6: 显示具体错误原因
+    metaTags += `<span class="meta-tag tag-error">❌ ${e.errorMsg || '失败'}</span>`;
   }
 
   const downloadBtn = e.status === 'done' ?
@@ -485,10 +549,22 @@ function updateBtns() {
 
 function updateStats() {
   if (!files.length) { $('statsBar').style.display = 'none'; return; }
-  $('statsBar').style.display = 'grid';
 
+  const doneFiles = files.filter(f => f.blob);
   const origTotal = files.reduce((s, f) => s + f.origSize, 0);
-  const newTotal  = files.filter(f => f.blob).reduce((s, f) => s + f.newSize, 0);
+  const newTotal  = doneFiles.reduce((s, f) => s + f.newSize, 0);
+
+  // BUG-4: 只统计已完成的文件
+  if (doneFiles.length === 0 && files.some(f => f.status === 'processing')) {
+    $('statsBar').style.display = 'grid';
+    $('sTotalFiles').textContent = files.length;
+    $('sOrigSize').textContent = fmtSize(origTotal);
+    $('sNewSize').textContent = '—';
+    $('sSaved').textContent = '—';
+    return;
+  }
+
+  $('statsBar').style.display = 'grid';
   const savedTotal = origTotal - newTotal;
   const savedPct = origTotal > 0 ? Math.round(savedTotal / origTotal * 100) : 0;
 
@@ -508,9 +584,9 @@ function fmtSize(bytes) {
 function showNotif(msg, type) {
   const el = $('notif');
   el.textContent = msg;
-  el.className = `notif ${type} show`;
+  el.className = `notif ${type || ''} show`;
   clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+  el._t = setTimeout(() => el.classList.remove('show'), 4000);
 }
 </script>
 
