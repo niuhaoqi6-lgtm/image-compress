@@ -12,10 +12,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 .app{max-width:960px;margin:0 auto}
 
 /* Header */
-.header{text-align:center;margin-bottom:32px}
+.header{text-align:center;margin-bottom:32px;position:relative}
 .header h1{font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,#60a5fa,#a78bfa);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
 .header p{color:#64748b;font-size:.9rem}
+.admin-entry{position:absolute;right:0;top:0;font-size:.78rem;color:#475569;cursor:pointer;
+  padding:4px 12px;border:1px solid #2d3550;border-radius:8px;transition:all .2s}
+.admin-entry:hover{color:#60a5fa;border-color:#60a5fa}
 
 /* Settings Panel */
 .settings{background:#1e2130;border:1px solid #2d3550;border-radius:16px;padding:20px;margin-bottom:20px}
@@ -136,7 +139,10 @@ select:focus{border-color:#60a5fa}
   <!-- Header -->
   <div class="header">
     <h1>🖼️ 图片压缩工具</h1>
-    <p>保持画质，智能压缩 · 支持 JPG / PNG / WebP · 完全本地处理，不上传任何数据</p>
+    <p>保持画质，智能压缩 · 支持 JPG / PNG / WebP · 图片本地处理，不上传图片文件</p>
+    <div class="admin-entry" onclick="window.open('https://jcnwe93j014r.feishu.cn/base/BTmMbQIPXaH330sdPgQcfpYonLf?table=tblfVhrfdspvfyyW&view=vewje5Xc2T')">
+      📊 管理后台
+    </div>
   </div>
 
   <!-- Settings -->
@@ -214,6 +220,71 @@ select:focus{border-color:#60a5fa}
 <div class="notif" id="notif"></div>
 
 <script>
+// ─── Feishu Config ──────────────────────────────────────
+const FEISHU_CONFIG = {
+  appId: 'cli_a9560de2277c9bce',
+  appSecret: 'Vy2zgPtaIXlv7vEJ42iJHb1cAJ17J70D',
+  baseId: 'BTmMbQIPXaH330sdPgQcfpYonLf',
+  tableId: 'tblfVhrfdspvfyyW'
+};
+let _feishuToken = null;
+let _feishuTokenExpire = 0;
+let _deviceId = (() => {
+  let d = localStorage.getItem('_imgcomp_device_id');
+  if (!d) { d = 'D' + Math.random().toString(36).substr(2, 10); localStorage.setItem('_imgcomp_device_id', d); }
+  return d;
+})();
+
+async function getFeishuToken() {
+  if (_feishuToken && Date.now() < _feishuTokenExpire) return _feishuToken;
+  try {
+    const resp = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app_id: FEISHU_CONFIG.appId, app_secret: FEISHU_CONFIG.appSecret })
+    });
+    const data = await resp.json();
+    if (data.code === 0) {
+      _feishuToken = data.tenant_access_token;
+      _feishuTokenExpire = Date.now() + (data.expire - 60) * 1000;
+      return _feishuToken;
+    }
+  } catch(e) { console.warn('Feishu token error:', e); }
+  return null;
+}
+
+async function reportToFeishu(entry) {
+  try {
+    const token = await getFeishuToken();
+    if (!token) return;
+    const origSizeKB = Math.round(entry.origSize / 1024);
+    const newSizeKB = Math.round(entry.newSize / 1024);
+    const savedPct = entry.origSize > 0 ? Math.round((1 - entry.newSize / entry.origSize) * 100) : 0;
+    const resp = await fetch(
+      `https://open.feishu.cn/open-apis/bitable/v1/apps/${FEISHU_CONFIG.baseId}/tables/${FEISHU_CONFIG.tableId}/records`,
+      {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            '使用时间': Date.now(),
+            '设备标识': _deviceId,
+            '文件名': entry.file.name,
+            '原始格式': entry.file.type,
+            '原始大小(KB)': origSizeKB,
+            '压缩后大小(KB)': newSizeKB,
+            '压缩率': savedPct,
+            '状态': '成功',
+            '备注': entry.converted ? '格式转换' : ''
+          }
+        })
+      }
+    );
+    const data = await resp.json();
+    if (data.code !== 0) console.warn('Feishu report error:', data);
+  } catch(e) { console.warn('Feishu report failed:', e); }
+}
+
 // ─── State ───────────────────────────────────────────────
 const files = []; // {id, file, thumb, origSize, origW, origH, blob, newSize, newW, newH, status, errorMsg, isGif}
 let idCnt = 0;
@@ -313,6 +384,8 @@ async function compressAll() {
       await compressOne(entry);
       entry.status = 'done';
       successCount++;
+      // 静默上报到飞书（不阻塞主流程）
+      reportToFeishu(entry);
     } catch(e) {
       entry.status = 'error';
       entry.errorMsg = e.message || '未知错误';
