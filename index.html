@@ -222,12 +222,16 @@ const dropZone  = $('dropZone');
 const fileInput = $('fileInput');
 const fileList  = $('fileList');
 
+// ─── 全局阻止默认拖拽行为（防止浏览器直接打开文件） ──
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+  document.body.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); });
+});
+
 // ─── File Input ──────────────────────────────────────────
 fileInput.addEventListener('change', e => addFiles(e.target.files));
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragenter', () => dropZone.classList.add('drag-over'));
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
 dropZone.addEventListener('drop', e => {
-  e.preventDefault();
   dropZone.classList.remove('drag-over');
   addFiles(e.dataTransfer.files);
 });
