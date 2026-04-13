@@ -142,13 +142,6 @@ select:focus{border-color:#60a5fa}
     <div class="settings-title">⚙️ 压缩设置</div>
     <div class="settings-grid">
       <div class="setting-item">
-        <label>压缩质量</label>
-        <input type="range" id="quality" min="30" max="100" value="82"
-               oninput="document.getElementById('qualityVal').textContent=this.value+'%'"/>
-        <span class="range-value" id="qualityVal">82%</span>
-      </div>
-
-      <div class="setting-item">
         <label>输出格式</label>
         <select id="outFormat">
           <option value="original">保持原格式</option>
@@ -297,7 +290,7 @@ async function compressAll() {
 }
 
 async function compressOne(entry) {
-  const quality  = parseInt($('quality').value) / 100;
+  const quality  = 1.0;
   const maxMB    = parseFloat($('maxFileMB').value) || 0;
   const maxKB    = maxMB > 0 ? maxMB * 1024 : 0;
   const outFmt   = $('outFormat').value;
