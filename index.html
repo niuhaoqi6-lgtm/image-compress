@@ -158,9 +158,27 @@ select:focus{border-color:#60a5fa}
   .actions{flex-direction:column}
   .btn{justify-content:center}
   .muyu-wrap{right:12px;bottom:70px}
-  .muyu-scene{width:90px;height:100px}
-  .muyu-body{width:80px;height:65px}
-  .muyu-gongde{font-size:1rem}
+  .muyu-scene{width:100px;height:120px;position:relative}
+  .muyu-body{
+    position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+    width:90px;height:75px;cursor:pointer;
+    transition:transform .1s ease;
+  }
+  .muyu-body.hit{animation:fishShake .3s ease}
+  @keyframes fishShake{
+    0%{transform:translateX(-50%) scale(1) rotate(0)}
+    30%{transform:translateX(-50%) scale(.92) rotate(-3deg)}
+    60%{transform:translateX(-50%) scale(1.02) rotate(1deg)}
+    100%{transform:translateX(-50%) scale(1) rotate(0)}
+  }
+  .muyu-stick{
+    position:absolute;top:-20px;left:50%;transform:translateX(-50%) rotate(-30deg);
+    width:50px;height:75px;cursor:pointer;
+    transform-origin:50% 8%;
+    transition:transform .15s cubic-bezier(.4,0,.2,1);
+  }
+  .muyu-stick.hit{transform:translateX(-50%) rotate(15deg)}
+  .muyu-gongde{font-size:.85rem;left:50%;margin-left:-20px}
 }
 </style>
 </head>
@@ -251,58 +269,62 @@ select:focus{border-color:#60a5fa}
 <div class="muyu-wrap" id="muyuWrap" title="敲木鱼积功德">
   <div class="muyu-scene">
     <!-- 木鱼棍 -->
-    <svg class="muyu-stick" id="muyuStick" width="100" height="140" viewBox="0 0 100 140">
+    <svg class="muyu-stick" id="muyuStick" width="120" height="180" viewBox="0 0 120 180">
       <defs>
         <linearGradient id="stickGrad" x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stop-color="#a0522d"/>
           <stop offset="50%" stop-color="#d2a679"/>
           <stop offset="100%" stop-color="#8b4513"/>
         </linearGradient>
+        <radialGradient id="stickHead" cx="40%" cy="40%" r="60%">
+          <stop offset="0%" stop-color="#d2a679"/>
+          <stop offset="100%" stop-color="#a0522d"/>
+        </radialGradient>
       </defs>
       <!-- 棍身 -->
-      <rect x="43" y="0" width="14" height="110" rx="7" fill="url(#stickGrad)" stroke="#6b3410" stroke-width="1"/>
-      <!-- 棍头（敲击端，圆形） -->
-      <circle cx="50" cy="115" r="14" fill="url(#stickGrad)" stroke="#6b3410" stroke-width="1.5"/>
-      <circle cx="50" cy="115" r="8" fill="#c49a6c" opacity=".3"/>
+      <rect x="52" y="5" width="16" height="140" rx="8" fill="url(#stickGrad)" stroke="#6b3410" stroke-width="1"/>
+      <!-- 棍头（敲击端，圆头） -->
+      <circle cx="60" cy="155" r="18" fill="url(#stickHead)" stroke="#6b3410" stroke-width="2"/>
+      <circle cx="60" cy="155" r="10" fill="#c49a6c" opacity=".4"/>
       <!-- 棍尾装饰 -->
-      <circle cx="50" cy="6" r="8" fill="#d2a679" stroke="#6b3410" stroke-width="1"/>
+      <circle cx="60" cy="10" r="10" fill="#d2a679" stroke="#6b3410" stroke-width="1.5"/>
     </svg>
-    <!-- 木鱼本体 -->
-    <svg class="muyu-body" id="muyuBody" width="200" height="160" viewBox="0 0 200 160">
+    <!-- 木鱼本体（水滴形传统木鱼） -->
+    <svg class="muyu-body" id="muyuBody" width="220" height="180" viewBox="0 0 220 180">
       <defs>
-        <radialGradient id="fishGrad" cx="50%" cy="40%" r="60%">
-          <stop offset="0%" stop-color="#d4a574"/>
-          <stop offset="40%" stop-color="#b8845a"/>
-          <stop offset="80%" stop-color="#8b5e3c"/>
+        <radialGradient id="fishGrad" cx="55%" cy="45%" r="55%">
+          <stop offset="0%" stop-color="#e8c9a0"/>
+          <stop offset="30%" stop-color="#d4a574"/>
+          <stop offset="60%" stop-color="#b8845a"/>
+          <stop offset="90%" stop-color="#8b5e3c"/>
           <stop offset="100%" stop-color="#6b3e26"/>
         </radialGradient>
-        <radialGradient id="innerGrad" cx="50%" cy="45%" r="50%">
-          <stop offset="0%" stop-color="#5a3a1e"/>
-          <stop offset="100%" stop-color="#3e2512"/>
-        </radialGradient>
+        <linearGradient id="mouthGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#4a2e18"/>
+          <stop offset="50%" stop-color="#2a1808"/>
+          <stop offset="100%" stop-color="#4a2e18"/>
+        </linearGradient>
       </defs>
-      <!-- 底座阴影 -->
-      <ellipse cx="100" cy="150" rx="75" ry="8" fill="rgba(0,0,0,.2)"/>
-      <!-- 木鱼主体（扁圆形） -->
-      <ellipse cx="100" cy="85" rx="85" ry="62" fill="url(#fishGrad)" stroke="#5a3520" stroke-width="2"/>
-      <!-- 木鱼顶部凸起（鱼嘴/开口） -->
-      <path d="M72 30 Q100 8 128 30" fill="#a0704a" stroke="#5a3520" stroke-width="1.5"/>
-      <!-- 鱼口（中间开口缝隙） -->
-      <path d="M82 28 L100 18 L118 28" fill="none" stroke="#3e2512" stroke-width="2" stroke-linecap="round"/>
-      <!-- 内部凹陷（鱼的腹部） -->
-      <ellipse cx="100" cy="80" rx="48" ry="35" fill="url(#innerGrad)" opacity=".6"/>
-      <!-- 鱼眼（左） -->
-      <circle cx="68" cy="72" r="8" fill="#3e2512"/>
-      <circle cx="70" cy="70" r="3" fill="#c49a6c" opacity=".4"/>
-      <!-- 鱼眼（右） -->
-      <circle cx="132" cy="72" r="8" fill="#3e2512"/>
-      <circle cx="134" cy="70" r="3" fill="#c49a6c" opacity=".4"/>
-      <!-- 鱼鳞纹理 -->
-      <path d="M60 95 Q80 88 100 95 Q120 102 140 95" fill="none" stroke="#5a3520" stroke-width="1" opacity=".4"/>
-      <path d="M65 110 Q85 103 105 110 Q125 117 145 110" fill="none" stroke="#5a3520" stroke-width="1" opacity=".3"/>
-      <path d="M70 125 Q90 118 110 125" fill="none" stroke="#5a3520" stroke-width="1" opacity=".2"/>
+      <!-- 底部小尾巴（木鱼底部的小柄） -->
+      <path d="M45 145 Q35 155 40 165 Q45 170 55 165 L60 160" fill="#8b5e3c" stroke="#5a3520" stroke-width="2"/>
+      <!-- 木鱼主体：水滴形 -->
+      <path d="M110 20
+               C160 20, 195 60, 195 105
+               C195 150, 160 170, 110 170
+               C60 170, 25 150, 25 105
+               C25 60, 60 20, 110 20 Z" 
+            fill="url(#fishGrad)" stroke="#5a3520" stroke-width="2"/>
+      <!-- 木鱼开口（斜向的缝隙） -->
+      <path d="M70 55 Q110 40 150 55" fill="none" stroke="#3e2512" stroke-width="3" stroke-linecap="round"/>
+      <path d="M75 60 Q110 48 145 60" fill="none" stroke="#3e2512" stroke-width="2" stroke-linecap="round"/>
+      <!-- 开口内部深色 -->
+      <ellipse cx="110" cy="58" rx="35" ry="8" fill="url(#mouthGrad)"/>
+      <!-- 木鱼纹理线条 -->
+      <path d="M60 90 Q110 85 160 90" fill="none" stroke="#5a3520" stroke-width="1" opacity=".3"/>
+      <path d="M65 115 Q110 110 155 115" fill="none" stroke="#5a3520" stroke-width="1" opacity=".2"/>
       <!-- 高光 -->
-      <ellipse cx="80" cy="55" rx="25" ry="12" fill="rgba(255,255,255,.08)" transform="rotate(-15 80 55)"/>
+      <ellipse cx="85" cy="45" rx="20" ry="10" fill="rgba(255,255,255,.12)" transform="rotate(-20 85 45)"/>
+      <ellipse cx="140" cy="55" rx="12" ry="6" fill="rgba(255,255,255,.08)" transform="rotate(15 140 55)"/>
     </svg>
   </div>
 </div>
