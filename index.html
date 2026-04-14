@@ -380,16 +380,16 @@ async function compressOne(entry) {
     return new Promise(async resolve => {
       const target = targetBytes * 1024;
       let lo = 0.01, hi = quality, best = null;
-      // 第一阶段：粗搜 7 次，锁定大致区间
-      for (let i = 0; i < 7; i++) {
+      // 第一阶段：粗搜 10 次，锁定大致区间
+      for (let i = 0; i < 10; i++) {
         const mid = (lo + hi) / 2;
         const b = await canvasToBlob(canvas, searchMime, mid);
         if (b.size <= target) { best = b; lo = mid; }
         else { hi = mid; }
       }
-      // 第二阶段：在 [lo-0.05, lo+0.05] 范围细搜 5 次
+      // 第二阶段：在 [lo-0.05, lo+0.05] 范围细搜 8 次
       let lo2 = Math.max(0.01, lo - 0.05), hi2 = Math.min(1, lo + 0.05);
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 8; i++) {
         const mid = (lo2 + hi2) / 2;
         const b = await canvasToBlob(canvas, searchMime, mid);
         if (b.size <= target && (!best || b.size > best.size)) { best = b; lo2 = mid; }
