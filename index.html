@@ -305,22 +305,33 @@ async function compressAll() {
   $('statsBar').style.display = 'grid';
 
   let successCount = 0, failCount = 0;
-  for (const entry of toProcess) {
-    entry.status = 'processing';
-    entry.errorMsg = '';
-    renderItem(entry);
-    try {
-      await compressOne(entry);
-      entry.status = 'done';
-      successCount++;
-    } catch(e) {
-      entry.status = 'error';
-      entry.errorMsg = e.message || '未知错误';
-      failCount++;
+  const CONCURRENCY = navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 4) : 3;
+
+  // 并行压缩
+  let idx = 0;
+  async function next() {
+    while (idx < toProcess.length) {
+      const entry = toProcess[idx++];
+      entry.status = 'processing';
+      entry.errorMsg = '';
+      renderItem(entry);
+      try {
+        await compressOne(entry);
+        entry.status = 'done';
+        successCount++;
+      } catch(e) {
+        entry.status = 'error';
+        entry.errorMsg = e.message || '未知错误';
+        failCount++;
+      }
+      renderItem(entry);
+      updateStats();
     }
-    renderItem(entry);
-    updateStats(); // 实时更新统计
   }
+
+  const workers = [];
+  for (let i = 0; i < CONCURRENCY; i++) workers.push(next());
+  await Promise.all(workers);
 
   $('btnCompress').disabled = false;
   $('btnCompress').innerHTML = '⚡ 一键压缩全部';
