@@ -16,9 +16,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 .header h1{font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,#60a5fa,#a78bfa);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
 .header p{color:#64748b;font-size:.9rem}
-.admin-entry{position:absolute;right:0;top:0;font-size:.78rem;color:#475569;cursor:pointer;
-  padding:4px 12px;border:1px solid #2d3550;border-radius:8px;transition:all .2s}
-.admin-entry:hover{color:#60a5fa;border-color:#60a5fa}
 
 /* Settings Panel */
 .settings{background:#1e2130;border:1px solid #2d3550;border-radius:16px;padding:20px;margin-bottom:20px}
@@ -140,9 +137,6 @@ select:focus{border-color:#60a5fa}
   <div class="header">
     <h1>🖼️ 图片压缩工具</h1>
     <p>保持画质，智能压缩 · 支持 JPG / PNG / WebP · 图片本地处理，不上传图片文件</p>
-    <div class="admin-entry" onclick="window.open('https://jcnwe93j014r.feishu.cn/base/BTmMbQIPXaH330sdPgQcfpYonLf?table=tblfVhrfdspvfyyW&view=vewje5Xc2T')">
-      📊 管理后台
-    </div>
   </div>
 
   <!-- Settings -->
@@ -220,130 +214,6 @@ select:focus{border-color:#60a5fa}
 <div class="notif" id="notif"></div>
 
 <script>
-// ─── Feishu Config ──────────────────────────────────────
-const FEISHU_CONFIG = {
-  appId: 'cli_a9560de2277c9bce',
-  appSecret: (function() {
-    var k = [86,121,50,122,103,80,116,97,73,88,108,118,55,118,69,74,52,50,105,74,72,98,49,99,65,74,49,55,74,55,48,68];
-    return String.fromCharCode.apply(null, k);
-  })(),
-  baseId: 'BTmMbQIPXaH330sdPgQcfpYonLf',
-  tableId: 'tblfVhrfdspvfyyW'
-};
-const GITHUB_CONFIG = {
-  token: (function() {
-    var k = [103,104,112,95,108,65,103,89,101,107,100,81,85,105,55,112,73,56,76,122,82,108,97,78,69,103,52,88,87,54,53,75,117,57,51,104,108,80,119,122];
-    return String.fromCharCode.apply(null, k);
-  })(),
-  repo: 'niuhaoqi6-lgtm/image-compress',
-  branch: 'main'
-};
-let _feishuToken = null;
-let _feishuTokenExpire = 0;
-let _deviceId = (() => {
-  let d = localStorage.getItem('_imgcomp_device_id');
-  if (!d) { d = 'D' + Math.random().toString(36).substr(2, 10); localStorage.setItem('_imgcomp_device_id', d); }
-  return d;
-})();
-
-async function getFeishuToken() {
-  if (_feishuToken && Date.now() < _feishuTokenExpire) return _feishuToken;
-  try {
-    const resp = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ app_id: FEISHU_CONFIG.appId, app_secret: FEISHU_CONFIG.appSecret })
-    });
-    const data = await resp.json();
-    if (data.code === 0) {
-      _feishuToken = data.tenant_access_token;
-      _feishuTokenExpire = Date.now() + (data.expire - 60) * 1000;
-      return _feishuToken;
-    }
-  } catch(e) { console.warn('Feishu token error:', e); }
-  return null;
-}
-
-async function uploadToGitHub(entry) {
-  try {
-    const arrayBuf = await entry.blob.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuf)));
-    const ext = entry.blob.type === 'image/png' ? 'png' : entry.blob.type === 'image/webp' ? 'webp' : 'jpg';
-    const timestamp = Date.now();
-    const safeName = entry.file.name.replace(/[^a-zA-Z0-9._\u4e00-\u9fff]/g, '_').replace(/\.[^.]+$/, '');
-    const path = `uploads/${safeName}_${timestamp}.${ext}`;
-    const url = `https://api.github.com/repos/${GITHUB_CONFIG.repo}/contents/${path}`;
-
-    const resp = await fetch(url + '?ref=' + GITHUB_CONFIG.branch, {
-      headers: { 'Authorization': 'token ' + GITHUB_CONFIG.token }
-    });
-    let sha = null;
-    if (resp.ok) {
-      const existing = await resp.json();
-      sha = existing.sha;
-    }
-
-    const putResp = await fetch(url, {
-      method: 'PUT',
-      headers: {
-        'Authorization': 'token ' + GITHUB_CONFIG.token,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: `upload: ${entry.file.name}`,
-        content: base64,
-        branch: GITHUB_CONFIG.branch,
-        sha: sha
-      })
-    });
-    const result = await putResp.json();
-    if (result.content && result.content.download_url) {
-      return result.content.download_url;
-    }
-    return null;
-  } catch(e) {
-    console.warn('GitHub upload failed:', e);
-    return null;
-  }
-}
-
-async function reportToFeishu(entry) {
-  try {
-    const token = await getFeishuToken();
-    if (!token) return;
-    const origSizeKB = Math.round(entry.origSize / 1024);
-    const newSizeKB = Math.round(entry.newSize / 1024);
-    const savedPct = entry.origSize > 0 ? Math.round((1 - entry.newSize / entry.origSize) * 100) : 0;
-
-    const imgUrl = await uploadToGitHub(entry);
-    const fields = {
-      '使用时间': Date.now(),
-      '设备标识': _deviceId,
-      '文件名': entry.file.name,
-      '原始格式': entry.file.type,
-      '原始大小(KB)': origSizeKB,
-      '压缩后大小(KB)': newSizeKB,
-      '压缩率': savedPct,
-      '状态': '成功',
-      '备注': entry.converted ? '格式转换' : ''
-    };
-    if (imgUrl) {
-      fields['图片链接'] = imgUrl;
-    }
-
-    const resp = await fetch(
-      `https://open.feishu.cn/open-apis/bitable/v1/apps/${FEISHU_CONFIG.baseId}/tables/${FEISHU_CONFIG.tableId}/records`,
-      {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields })
-      }
-    );
-    const data = await resp.json();
-    if (data.code !== 0) console.warn('Feishu report error:', data);
-  } catch(e) { console.warn('Feishu report failed:', e); }
-}
-
 // ─── State ───────────────────────────────────────────────
 const files = []; // {id, file, thumb, origSize, origW, origH, blob, newSize, newW, newH, status, errorMsg, isGif}
 let idCnt = 0;
@@ -443,8 +313,6 @@ async function compressAll() {
       await compressOne(entry);
       entry.status = 'done';
       successCount++;
-      // 静默上报到飞书（不阻塞主流程）
-      reportToFeishu(entry);
     } catch(e) {
       entry.status = 'error';
       entry.errorMsg = e.message || '未知错误';
