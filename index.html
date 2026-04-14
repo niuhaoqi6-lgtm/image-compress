@@ -153,11 +153,6 @@ select:focus{border-color:#60a5fa}
         </select>
       </div>
       <div class="setting-item">
-        <label>压缩质量 <span class="range-value" id="qualityVal">82%</span></label>
-        <input type="range" id="quality" min="10" max="100" value="82"
-          oninput="$('qualityVal').textContent=this.value+'%'"/>
-      </div>
-      <div class="setting-item">
         <label>最大文件大小限制</label>
         <div class="input-unit">
           <input type="number" id="maxFileMB" value="0" min="0" max="100" step="0.1" onfocus="this.select()"/>
@@ -337,7 +332,7 @@ async function compressAll() {
 }
 
 async function compressOne(entry) {
-  const quality  = parseInt($('quality').value) / 100;
+  const quality  = 1.0;
   const maxMB    = parseFloat($('maxFileMB').value) || 0;
   const maxKB    = maxMB > 0 ? maxMB * 1024 : 0;
   const outFmt   = $('outFormat').value;
