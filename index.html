@@ -126,15 +126,30 @@ select:focus{border-color:#60a5fa}
 .muyu-wrap{position:fixed;right:24px;bottom:80px;z-index:50;
   opacity:0;transition:opacity .4s;cursor:pointer;user-select:none}
 .muyu-wrap:hover{opacity:1}
-.muyu-body{width:64px;height:64px;display:flex;align-items:center;justify-content:center;
-  font-size:42px;transition:transform .1s;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
-.muyu-wrap:active .muyu-body{transform:scale(.85)}
+.muyu-scene{position:relative;width:120px;height:130px}
+/* 木鱼本体 - SVG 绘制 */
+.muyu-body{position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  width:110px;height:90px;transition:transform .08s}
+.muyu-body.hit{animation:muyuShake .3s ease-out}
+@keyframes muyuShake{
+  0%{transform:translateX(-50%) scale(1) rotate(0deg)}
+  30%{transform:translateX(-50%) scale(.92) rotate(-4deg)}
+  60%{transform:translateX(-50%) scale(1.02) rotate(1deg)}
+  100%{transform:translateX(-50%) scale(1) rotate(0deg)}
+}
+/* 木鱼棍 */
+.muyu-stick{position:absolute;top:-8px;left:50%;transform:translateX(-50%) rotate(-40deg);
+  transform-origin:bottom center;transition:transform .15s ease-in;opacity:.85}
+.muyu-stick.hit{transform:translateX(-50%) rotate(5deg);transition:transform .08s ease-in}
+/* 功德文字 */
 .muyu-gongde{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);
-  color:#fbbf24;font-size:1rem;font-weight:700;white-space:nowrap;pointer-events:none;
-  animation:gongdeUp 1.2s ease-out forwards}
+  color:#fbbf24;font-size:1.15rem;font-weight:700;white-space:nowrap;pointer-events:none;
+  text-shadow:0 0 8px rgba(251,191,36,.5);
+  animation:gongdeUp 1.4s ease-out forwards}
 @keyframes gongdeUp{
-  0%{opacity:1;transform:translateX(-50%) translateY(0)}
-  100%{opacity:0;transform:translateX(-50%) translateY(-60px)}
+  0%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+  50%{opacity:1;transform:translateX(-50%) translateY(-35px) scale(1.15)}
+  100%{opacity:0;transform:translateX(-50%) translateY(-70px) scale(.9)}
 }
 
 @media(max-width:600px){
@@ -143,6 +158,9 @@ select:focus{border-color:#60a5fa}
   .actions{flex-direction:column}
   .btn{justify-content:center}
   .muyu-wrap{right:12px;bottom:70px}
+  .muyu-scene{width:90px;height:100px}
+  .muyu-body{width:80px;height:65px}
+  .muyu-gongde{font-size:1rem}
 }
 </style>
 </head>
@@ -230,8 +248,63 @@ select:focus{border-color:#60a5fa}
 <div class="notif" id="notif"></div>
 
 <!-- Wooden Fish Easter Egg -->
-<div class="muyu-wrap" id="muyuWrap" title="敲木鱼">
-  <div class="muyu-body" id="muyuBody">🪵</div>
+<div class="muyu-wrap" id="muyuWrap" title="敲木鱼积功德">
+  <div class="muyu-scene">
+    <!-- 木鱼棍 -->
+    <svg class="muyu-stick" id="muyuStick" width="100" height="140" viewBox="0 0 100 140">
+      <defs>
+        <linearGradient id="stickGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#a0522d"/>
+          <stop offset="50%" stop-color="#d2a679"/>
+          <stop offset="100%" stop-color="#8b4513"/>
+        </linearGradient>
+      </defs>
+      <!-- 棍身 -->
+      <rect x="43" y="0" width="14" height="110" rx="7" fill="url(#stickGrad)" stroke="#6b3410" stroke-width="1"/>
+      <!-- 棍头（敲击端，圆形） -->
+      <circle cx="50" cy="115" r="14" fill="url(#stickGrad)" stroke="#6b3410" stroke-width="1.5"/>
+      <circle cx="50" cy="115" r="8" fill="#c49a6c" opacity=".3"/>
+      <!-- 棍尾装饰 -->
+      <circle cx="50" cy="6" r="8" fill="#d2a679" stroke="#6b3410" stroke-width="1"/>
+    </svg>
+    <!-- 木鱼本体 -->
+    <svg class="muyu-body" id="muyuBody" width="200" height="160" viewBox="0 0 200 160">
+      <defs>
+        <radialGradient id="fishGrad" cx="50%" cy="40%" r="60%">
+          <stop offset="0%" stop-color="#d4a574"/>
+          <stop offset="40%" stop-color="#b8845a"/>
+          <stop offset="80%" stop-color="#8b5e3c"/>
+          <stop offset="100%" stop-color="#6b3e26"/>
+        </radialGradient>
+        <radialGradient id="innerGrad" cx="50%" cy="45%" r="50%">
+          <stop offset="0%" stop-color="#5a3a1e"/>
+          <stop offset="100%" stop-color="#3e2512"/>
+        </radialGradient>
+      </defs>
+      <!-- 底座阴影 -->
+      <ellipse cx="100" cy="150" rx="75" ry="8" fill="rgba(0,0,0,.2)"/>
+      <!-- 木鱼主体（扁圆形） -->
+      <ellipse cx="100" cy="85" rx="85" ry="62" fill="url(#fishGrad)" stroke="#5a3520" stroke-width="2"/>
+      <!-- 木鱼顶部凸起（鱼嘴/开口） -->
+      <path d="M72 30 Q100 8 128 30" fill="#a0704a" stroke="#5a3520" stroke-width="1.5"/>
+      <!-- 鱼口（中间开口缝隙） -->
+      <path d="M82 28 L100 18 L118 28" fill="none" stroke="#3e2512" stroke-width="2" stroke-linecap="round"/>
+      <!-- 内部凹陷（鱼的腹部） -->
+      <ellipse cx="100" cy="80" rx="48" ry="35" fill="url(#innerGrad)" opacity=".6"/>
+      <!-- 鱼眼（左） -->
+      <circle cx="68" cy="72" r="8" fill="#3e2512"/>
+      <circle cx="70" cy="70" r="3" fill="#c49a6c" opacity=".4"/>
+      <!-- 鱼眼（右） -->
+      <circle cx="132" cy="72" r="8" fill="#3e2512"/>
+      <circle cx="134" cy="70" r="3" fill="#c49a6c" opacity=".4"/>
+      <!-- 鱼鳞纹理 -->
+      <path d="M60 95 Q80 88 100 95 Q120 102 140 95" fill="none" stroke="#5a3520" stroke-width="1" opacity=".4"/>
+      <path d="M65 110 Q85 103 105 110 Q125 117 145 110" fill="none" stroke="#5a3520" stroke-width="1" opacity=".3"/>
+      <path d="M70 125 Q90 118 110 125" fill="none" stroke="#5a3520" stroke-width="1" opacity=".2"/>
+      <!-- 高光 -->
+      <ellipse cx="80" cy="55" rx="25" ry="12" fill="rgba(255,255,255,.08)" transform="rotate(-15 80 55)"/>
+    </svg>
+  </div>
 </div>
 
 <script>
@@ -665,19 +738,23 @@ function showNotif(msg, type) {
 
 // ─── Wooden Fish 🪵 ────────────────────────────────────────
 (function(){
-  const wrap = $('muyuWrap');
-  const body = $('muyuBody');
+  const wrap  = $('muyuWrap');
+  const body  = $('muyuBody');
+  const stick = $('muyuStick');
   wrap.addEventListener('click', function(e){
     e.preventDefault();
     // 飘出"功德+1"
     const g = document.createElement('div');
     g.className = 'muyu-gongde';
     g.textContent = '功德+1';
-    wrap.appendChild(g);
-    setTimeout(() => g.remove(), 1200);
-    // 木鱼震动反馈
-    body.style.transform = 'scale(.85) rotate(-5deg)';
-    setTimeout(() => { body.style.transform = 'scale(1) rotate(0deg)'; }, 100);
+    wrap.querySelector('.muyu-scene').appendChild(g);
+    setTimeout(() => g.remove(), 1500);
+    // 木鱼棍敲击动画
+    stick.classList.add('hit');
+    setTimeout(() => stick.classList.remove('hit'), 200);
+    // 木鱼震动动画
+    body.classList.add('hit');
+    setTimeout(() => body.classList.remove('hit'), 300);
   });
 })();
 </script>
