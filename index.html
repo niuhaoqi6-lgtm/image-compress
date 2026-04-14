@@ -363,6 +363,16 @@ async function compressOne(entry) {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, w, h);
 
+  // 如果原图已经 ≤ 大小限制，直接用原图，不压缩
+  if (maxKB > 0 && entry.file.size <= maxKB * 1024) {
+    entry.blob = entry.file;
+    entry.newSize = entry.file.size;
+    entry.newW = img.naturalWidth;
+    entry.newH = img.naturalHeight;
+    entry.converted = false;
+    return;
+  }
+
   // 保持原格式，也可手动选择
   let mime = 'image/jpeg';
   if (outFmt === 'original') {
