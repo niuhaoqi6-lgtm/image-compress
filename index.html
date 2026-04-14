@@ -364,28 +364,37 @@ async function compressOne(entry) {
   let blob;
   let converted = false; // 是否发生了格式转换
 
+  // 精细二分搜索：尽量接近目标大小
+  function binarySearch(targetBytes, searchMime) {
+    return new Promise(async resolve => {
+      const target = targetBytes * 1024;
+      let lo = 0.01, hi = quality, best = null;
+      // 第一阶段：粗搜 10 次，锁定大致区间
+      for (let i = 0; i < 10; i++) {
+        const mid = (lo + hi) / 2;
+        const b = await canvasToBlob(canvas, searchMime, mid);
+        if (b.size <= target) { best = b; lo = mid; }
+        else { hi = mid; }
+      }
+      // 第二阶段：在 [lo-0.05, lo+0.05] 范围细搜 8 次
+      let lo2 = Math.max(0.01, lo - 0.05), hi2 = Math.min(1, lo + 0.05);
+      for (let i = 0; i < 8; i++) {
+        const mid = (lo2 + hi2) / 2;
+        const b = await canvasToBlob(canvas, searchMime, mid);
+        if (b.size <= target && (!best || b.size > best.size)) { best = b; lo2 = mid; }
+        else if (b.size <= target) { best = b; lo2 = mid; }
+        else { hi2 = mid; }
+      }
+      resolve(best || await canvasToBlob(canvas, searchMime, 0.01));
+    });
+  }
+
   // PNG + 大小限制 → 自动转 WebP（PNG 不支持有损压缩）
   if (maxKB > 0 && mime === 'image/png') {
-    let targetMime = 'image/webp';
     converted = true;
-    let lo = 0.1, hi = quality, best = null;
-    for (let i = 0; i < 10; i++) {
-      const mid = (lo + hi) / 2;
-      const b = await canvasToBlob(canvas, targetMime, mid);
-      if (b.size <= maxKB * 1024) { best = b; lo = mid; }
-      else { hi = mid; }
-    }
-    blob = best || await canvasToBlob(canvas, targetMime, 0.1);
+    blob = await binarySearch(maxKB, 'image/webp');
   } else if (maxKB > 0) {
-    // JPG/WebP + 大小限制：二分搜索
-    let lo = 0.1, hi = quality, best = null;
-    for (let i = 0; i < 10; i++) {
-      const mid = (lo + hi) / 2;
-      const b = await canvasToBlob(canvas, mime, mid);
-      if (b.size <= maxKB * 1024) { best = b; lo = mid; }
-      else { hi = mid; }
-    }
-    blob = best || await canvasToBlob(canvas, mime, 0.1);
+    blob = await binarySearch(maxKB, mime);
   } else if (mime === 'image/png') {
     // PNG 不限大小：尝试用 WebP 压缩，若更小则用 WebP，否则保留 PNG
     const pngBlob  = await canvasToBlob(canvas, 'image/png', 1);
