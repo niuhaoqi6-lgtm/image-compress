@@ -122,11 +122,27 @@ select:focus{border-color:#60a5fa}
 .notif.error{border-color:#4d1d1d;color:#f87171}
 .notif.warning{border-color:#3a2a1a;color:#fbbf24}
 
+/* Wooden Fish */
+.muyu-wrap{position:fixed;right:24px;bottom:80px;z-index:50;
+  opacity:0;transition:opacity .4s;cursor:pointer;user-select:none}
+.muyu-wrap:hover{opacity:1}
+.muyu-body{width:64px;height:64px;display:flex;align-items:center;justify-content:center;
+  font-size:42px;transition:transform .1s;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
+.muyu-wrap:active .muyu-body{transform:scale(.85)}
+.muyu-gongde{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);
+  color:#fbbf24;font-size:1rem;font-weight:700;white-space:nowrap;pointer-events:none;
+  animation:gongdeUp 1.2s ease-out forwards}
+@keyframes gongdeUp{
+  0%{opacity:1;transform:translateX(-50%) translateY(0)}
+  100%{opacity:0;transform:translateX(-50%) translateY(-60px)}
+}
+
 @media(max-width:600px){
   .stats-bar{grid-template-columns:repeat(2,1fr)}
   .file-name{max-width:180px}
   .actions{flex-direction:column}
   .btn{justify-content:center}
+  .muyu-wrap{right:12px;bottom:70px}
 }
 </style>
 </head>
@@ -212,6 +228,11 @@ select:focus{border-color:#60a5fa}
 
 <!-- Notification -->
 <div class="notif" id="notif"></div>
+
+<!-- Wooden Fish Easter Egg -->
+<div class="muyu-wrap" id="muyuWrap" title="敲木鱼">
+  <div class="muyu-body" id="muyuBody">🪵</div>
+</div>
 
 <script>
 // ─── State ───────────────────────────────────────────────
@@ -641,6 +662,24 @@ function showNotif(msg, type) {
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.remove('show'), 4000);
 }
+
+// ─── Wooden Fish 🪵 ────────────────────────────────────────
+(function(){
+  const wrap = $('muyuWrap');
+  const body = $('muyuBody');
+  wrap.addEventListener('click', function(e){
+    e.preventDefault();
+    // 飘出"功德+1"
+    const g = document.createElement('div');
+    g.className = 'muyu-gongde';
+    g.textContent = '功德+1';
+    wrap.appendChild(g);
+    setTimeout(() => g.remove(), 1200);
+    // 木鱼震动反馈
+    body.style.transform = 'scale(.85) rotate(-5deg)';
+    setTimeout(() => { body.style.transform = 'scale(1) rotate(0deg)'; }, 100);
+  });
+})();
 </script>
 
 <!-- Optional: JSZip for batch download -->
