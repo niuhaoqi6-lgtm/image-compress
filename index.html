@@ -153,6 +153,11 @@ select:focus{border-color:#60a5fa}
         </select>
       </div>
       <div class="setting-item">
+        <label>压缩质量 <span class="range-value" id="qualityVal">82%</span></label>
+        <input type="range" id="quality" min="10" max="100" value="82"
+          oninput="$('qualityVal').textContent=this.value+'%'"/>
+      </div>
+      <div class="setting-item">
         <label>最大文件大小限制</label>
         <div class="input-unit">
           <input type="number" id="maxFileMB" value="0" min="0" max="100" step="0.1" onfocus="this.select()"/>
@@ -292,12 +297,12 @@ function loadThumb(entry) {
 
 // ─── Compress ────────────────────────────────────────────
 async function compressAll() {
-  // BUG-4: 重新压缩前先重置统计数据
+  // 重新压缩前先重置所有非处理中的文件状态
   const toProcess = files.filter(f => f.status !== 'processing');
   if (!toProcess.length) { showNotif('没有需要压缩的文件', 'error'); return; }
 
-  // 重置所有 blob，让统计不残留旧数据
-  toProcess.forEach(f => { f.blob = null; f.newSize = 0; });
+  // 重置所有 blob 和状态，让统计不残留旧数据
+  toProcess.forEach(f => { f.blob = null; f.newSize = 0; f.status = 'ready'; f.errorMsg = ''; });
   updateStats();
 
   $('btnCompress').disabled = true;
@@ -332,7 +337,7 @@ async function compressAll() {
 }
 
 async function compressOne(entry) {
-  const quality  = 1.0;
+  const quality  = parseInt($('quality').value) / 100;
   const maxMB    = parseFloat($('maxFileMB').value) || 0;
   const maxKB    = maxMB > 0 ? maxMB * 1024 : 0;
   const outFmt   = $('outFormat').value;
@@ -364,9 +369,8 @@ async function compressOne(entry) {
   let blob;
   let converted = false; // 是否发生了格式转换
 
-  // BUG-5: PNG + 大小限制 → 提示用户并转为 WebP（比 JPG 更好）
+  // PNG + 大小限制 → 自动转 WebP（PNG 不支持有损压缩）
   if (maxKB > 0 && mime === 'image/png') {
-    // PNG 无法有损压缩，自动转 WebP
     let targetMime = 'image/webp';
     converted = true;
     let lo = 0.1, hi = quality, best = null;
@@ -387,6 +391,16 @@ async function compressOne(entry) {
       else { hi = mid; }
     }
     blob = best || await canvasToBlob(canvas, mime, 0.1);
+  } else if (mime === 'image/png') {
+    // PNG 不限大小：尝试用 WebP 压缩，若更小则用 WebP，否则保留 PNG
+    const pngBlob  = await canvasToBlob(canvas, 'image/png', 1);
+    const webpBlob = await canvasToBlob(canvas, 'image/webp', quality);
+    if (webpBlob.size < pngBlob.size) {
+      blob = webpBlob;
+      converted = true;
+    } else {
+      blob = pngBlob;
+    }
   } else {
     blob = await canvasToBlob(canvas, mime, q);
   }
