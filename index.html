@@ -126,24 +126,29 @@ select:focus{border-color:#60a5fa}
 .muyu-wrap{position:fixed;right:24px;bottom:80px;z-index:50;
   opacity:0;transition:opacity .4s;cursor:pointer;user-select:none}
 .muyu-wrap:hover{opacity:1}
-.muyu-scene{position:relative;width:120px;height:130px}
-/* 木鱼本体 - SVG 绘制 */
+.muyu-scene{position:relative;width:120px;height:140px}
+/* 木鱼本体 */
 .muyu-body{position:absolute;bottom:0;left:50%;transform:translateX(-50%);
-  width:110px;height:90px;transition:transform .08s}
+  width:100px;height:72px}
 .muyu-body.hit{animation:muyuShake .3s ease-out}
 @keyframes muyuShake{
   0%{transform:translateX(-50%) scale(1) rotate(0deg)}
-  30%{transform:translateX(-50%) scale(.92) rotate(-4deg)}
+  30%{transform:translateX(-50%) scale(.93) rotate(-2deg)}
   60%{transform:translateX(-50%) scale(1.02) rotate(1deg)}
   100%{transform:translateX(-50%) scale(1) rotate(0deg)}
 }
-/* 木鱼棍 */
-.muyu-stick{position:absolute;top:-8px;left:50%;transform:translateX(-50%) rotate(-40deg);
-  transform-origin:bottom center;transition:transform .15s ease-in;opacity:.85}
-.muyu-stick.hit{transform:translateX(-50%) rotate(5deg);transition:transform .08s ease-in}
+/* 木鱼棍：右上方斜拿，点击时向左下敲 */
+.muyu-stick{
+  position:absolute;top:0;right:0;
+  width:56px;height:74px;
+  transform:rotate(35deg);
+  transform-origin:50% 5%;
+  transition:transform .15s cubic-bezier(.4,0,.2,1);
+}
+.muyu-stick.hit{transform:rotate(62deg)}
 /* 功德文字 */
 .muyu-gongde{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);
-  color:#fbbf24;font-size:1.15rem;font-weight:700;white-space:nowrap;pointer-events:none;
+  color:#fbbf24;font-size:1.05rem;font-weight:700;white-space:nowrap;pointer-events:none;
   text-shadow:0 0 8px rgba(251,191,36,.5);
   animation:gongdeUp 1.4s ease-out forwards}
 @keyframes gongdeUp{
@@ -158,27 +163,10 @@ select:focus{border-color:#60a5fa}
   .actions{flex-direction:column}
   .btn{justify-content:center}
   .muyu-wrap{right:12px;bottom:70px}
-  .muyu-scene{width:110px;height:130px;position:relative}
-  .muyu-body{
-    position:absolute;bottom:0;left:50%;transform:translateX(-50%);
-    width:95px;height:68px;cursor:pointer;
-  }
-  .muyu-body.hit{animation:fishShake .3s ease}
-  @keyframes fishShake{
-    0%{transform:translateX(-50%) scale(1) rotate(0)}
-    30%{transform:translateX(-50%) scale(.93) rotate(-2deg)}
-    60%{transform:translateX(-50%) scale(1.02) rotate(1deg)}
-    100%{transform:translateX(-50%) scale(1) rotate(0)}
-  }
-  .muyu-stick{
-    position:absolute;top:0;right:-5px;
-    width:55px;height:72px;cursor:pointer;
-    transform:rotate(35deg);
-    transform-origin:50% 5%;
-    transition:transform .15s cubic-bezier(.4,0,.2,1);
-  }
-  .muyu-stick.hit{transform:rotate(60deg)}
-  .muyu-gongde{font-size:.85rem;left:50%;margin-left:-20px}
+  .muyu-scene{width:100px;height:120px}
+  .muyu-body{width:85px;height:60px}
+  .muyu-stick{width:48px;height:63px}
+  .muyu-gongde{font-size:.85rem}
 }
 </style>
 </head>
