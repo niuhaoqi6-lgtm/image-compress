@@ -144,6 +144,15 @@ select:focus{border-color:#60a5fa}
     <div class="settings-title">⚙️ 压缩设置</div>
     <div class="settings-grid">
       <div class="setting-item">
+        <label>输出格式</label>
+        <select id="outFormat">
+          <option value="original">保持原格式</option>
+          <option value="jpeg">统一转 JPG</option>
+          <option value="png">统一转 PNG</option>
+          <option value="webp">统一转 WebP（更小）</option>
+        </select>
+      </div>
+      <div class="setting-item">
         <label>最大文件大小限制</label>
         <div class="input-unit">
           <input type="number" id="maxFileMB" value="0" min="0" max="100" step="0.1" onfocus="this.select()"/>
@@ -337,6 +346,7 @@ async function compressOne(entry) {
   const quality  = 1.0;
   const maxMB    = parseFloat($('maxFileMB').value) || 0;
   const maxKB    = maxMB > 0 ? maxMB * 1024 : 0;
+  const outFmt   = $('outFormat').value;
 
   const img = await loadImage(entry.thumb || URL.createObjectURL(entry.file));
 
@@ -353,8 +363,13 @@ async function compressOne(entry) {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, w, h);
 
-  // 固定输出 PNG 格式
-  const mime = 'image/png';
+  // 保持原格式，也可手动选择
+  let mime = 'image/jpeg';
+  if (outFmt === 'original') {
+    mime = entry.file.type === 'image/png'  ? 'image/png'  :
+           entry.file.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+  } else if (outFmt === 'png')  mime = 'image/png';
+  else if (outFmt === 'webp') mime = 'image/webp';
 
   let q = quality;
   let blob;
